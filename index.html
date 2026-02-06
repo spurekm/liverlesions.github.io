@@ -1,1 +1,152 @@
-<!DOCTYPE html> <html> <head> <title>My GitHub Page</title> </head> <body> <h1>Welcome to My Website!</h1> <p>This is hosted on GitHub Pages.</p> </body> </html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Metastasis vs Cyst Calculator</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #fafafa; }
+    .wrap { max-width: 720px; margin: 40px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid #e7e7e7; border-radius: 16px; padding: 20px; box-shadow: 0 8px 28px rgba(0,0,0,.06); }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    p { margin: 6px 0 0; color: #444; line-height: 1.4; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    label { display: block; font-size: 14px; margin-bottom: 6px; color: #222; }
+    input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #d9d9d9; border-radius: 12px; font-size: 16px; }
+    button { margin-top: 14px; width: 100%; padding: 12px 14px; border: 0; border-radius: 12px; font-size: 16px; cursor: pointer; background: #111; color: #fff; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .result { margin-top: 16px; padding: 14px; border-radius: 12px; border: 1px solid #e7e7e7; background: #f7f7f7; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; border: 1px solid #ddd; background: #fff; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+    .muted { color: #555; font-size: 14px; }
+    .foot { margin-top: 12px; font-size: 12px; color: #666; }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Metastasis vs Cyst Calculator</h1>
+      <p class="muted">Enter <b>VNC</b> and <b>Iodine</b>. Click <b>Calculate</b> to get the model classification.</p>
+
+      <div class="grid">
+        <div>
+          <label for="vnc">VNC</label>
+          <input id="vnc" type="number" step="any" inputmode="decimal" placeholder="e.g., 12.3" />
+        </div>
+        <div>
+          <label for="iodine">Iodine</label>
+          <input id="iodine" type="number" step="any" inputmode="decimal" placeholder="e.g., 1.45" />
+        </div>
+      </div>
+
+      <button id="calcBtn">Calculate</button>
+
+      <div id="output" class="result" style="display:none;"></div>
+
+      <div class="foot">
+        For research/decision support use only. Validate performance and intended use in your clinical setting.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /************************************************************
+     * 1) PUT YOUR MODEL PARAMETERS HERE
+     *
+     * Logistic regression:
+     *   logit(p) = b0 + bVNC*VNC + bIodine*Iodine
+     *   p = 1 / (1 + exp(-logit))
+     *
+     * threshold: fixed operating point (NOT user input)
+     ************************************************************/
+    const MODEL = {
+      b0: 0.0,        // intercept
+      bVNC: 0.0,      // coefficient for VNC
+      bIodine: 0.0,   // coefficient for Iodine
+      threshold: 0.50 // operating threshold on probability p
+    };
+
+    // Decide which class is "positive"
+    // Set positiveLabel to whatever p represents in your model training (e.g., metastasis).
+    const positiveLabel = "Metastasis";
+    const negativeLabel = "Cyst";
+
+    /************************************************************/
+    const vncEl = document.getElementById("vnc");
+    const iodineEl = document.getElementById("iodine");
+    const btn = document.getElementById("calcBtn");
+    const output = document.getElementById("output");
+
+    function sigmoid(x) {
+      // numerically stable-ish sigmoid
+      if (x >= 0) {
+        const z = Math.exp(-x);
+        return 1 / (1 + z);
+      } else {
+        const z = Math.exp(x);
+        return z / (1 + z);
+      }
+    }
+
+    function formatNumber(x, digits=3) {
+      if (!Number.isFinite(x)) return String(x);
+      return x.toFixed(digits).replace(/\.?0+$/, ""); // trim trailing zeros
+    }
+
+    function parseInput(el) {
+      const v = Number(el.value);
+      return Number.isFinite(v) ? v : null;
+    }
+
+    function classify(vnc, iodine) {
+      const logit = MODEL.b0 + MODEL.bVNC * vnc + MODEL.bIodine * iodine;
+      const p = sigmoid(logit);
+      const isPositive = p >= MODEL.threshold;
+      return { logit, p, isPositive, label: isPositive ? positiveLabel : negativeLabel };
+    }
+
+    function showResult({logit, p, isPositive, label}) {
+      output.style.display = "block";
+      const badge = `<span class="badge"><b>Classification:</b> ${label}</span>`;
+      const probLine = `<div class="row"><span class="muted"><b>P(${positiveLabel})</b> = ${formatNumber(p, 4)}</span></div>`;
+      const logitLine = `<div class="row"><span class="muted"><b>Logit</b> = ${formatNumber(logit, 4)}</span></div>`;
+      const threshLine = `<div class="row"><span class="muted"><b>Threshold</b> = ${formatNumber(MODEL.threshold, 3)} (fixed)</span></div>`;
+
+      output.innerHTML = `
+        ${badge}
+        ${probLine}
+        ${logitLine}
+        ${threshLine}
+      `;
+
+      // Optional: subtle visual emphasis
+      output.style.background = isPositive ? "#fff7f2" : "#f2fff7";
+      output.style.borderColor = isPositive ? "#ffd8c2" : "#c9f3d7";
+    }
+
+    btn.addEventListener("click", () => {
+      const vnc = parseInput(vncEl);
+      const iodine = parseInput(iodineEl);
+
+      if (vnc === null || iodine === null) {
+        output.style.display = "block";
+        output.style.background = "#f7f7f7";
+        output.style.borderColor = "#e7e7e7";
+        output.innerHTML = `<span class="badge">Please enter valid numbers for VNC and Iodine.</span>`;
+        return;
+      }
+
+      const res = classify(vnc, iodine);
+      showResult(res);
+    });
+
+    // Nice UX: Enter key triggers calculate from either input
+    [vncEl, iodineEl].forEach(el => {
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") btn.click();
+      });
+    });
+  </script>
+</body>
+</html>
