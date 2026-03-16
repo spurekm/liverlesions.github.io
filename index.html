@@ -51,28 +51,17 @@
   </div>
 
   <script>
-    /************************************************************
-     * 1) PUT YOUR MODEL PARAMETERS HERE
-     *
-     * Logistic regression:
-     *   logit(p) = b0 + bVNC*VNC + bIodine*Iodine
-     *   p = 1 / (1 + exp(-logit))
-     *
-     * threshold: fixed operating point (NOT user input)
-     ************************************************************/
+    // Model parameters
     const MODEL = {
       b0: -0.4645,        // intercept
       bVNC: 0.0069,      // coefficient for VNC
       bIodine: 0.1624,   // coefficient for Iodine
-      threshold: 0.4419 // operating threshold on probability p
+      threshold: 0.4419 // operating threshold on probability p - thr_for_and_sens: safe exclusion of cysts
     };
 
-    // Decide which class is "positive"
-    // Set positiveLabel to whatever p represents in your model training (e.g., metastasis).
     const positiveLabel = "Metastasis";
     const negativeLabel = "Cyst";
 
-    /************************************************************/
     const vncEl = document.getElementById("vnc");
     const iodineEl = document.getElementById("iodine");
     const btn = document.getElementById("calcBtn");
